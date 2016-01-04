@@ -15,9 +15,7 @@ class ae_lr:
         self.ae_model = AutoEncoderModel(
             mx.gpu(0),
             [units,
-            int(math.ceil(units/5.0)),
-            int(math.ceil(units/20.0)),
-            int(math.ceil(units/80.0))
+           500, 500, 2000, 10
             ],
             pt_dropout=0.2,
             internal_act='relu',
@@ -48,11 +46,17 @@ class ae_lr:
         return self.ls.predict_proba(low_X)
 
     def apply(self, X):
-        batch_size = 100
-        data_iter = mx.io.NDArrayIter({'data': X}, batch_size=batch_size, shuffle=False,
-                                      last_batch_handle='pad')
-        Y = model.extract_feature(self.ae_model.loss, self.ae_model.args, self.ae_model.auxs, data_iter,
-                                 X.shape[0], self.xpu).values()[0]
-        return Y
+
+        mx_X = mx.nd.empty(X.shape, mx.gpu(0))
+        mx_X[:] = X
+        encoder_args={"data":mx_X}
+
+        for ekey in self.ae_model.args.keys():
+            if "encoder" in ekey:
+                encoder_args[ekey] = self.ae_model.args[ekey]
+
+        encoder = self.ae_model.encoder.bind(ctx=mx.gpu(0), args=encoder_args)
+        encoder.forward()
+        return encoder.outputs[0].asnumpy()
 
 
