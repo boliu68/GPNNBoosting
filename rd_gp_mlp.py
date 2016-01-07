@@ -8,7 +8,7 @@ from sklearn.linear_model import Lasso, Ridge, LassoCV
 # from sklearn.neural_network import MLPRegressor
 
 import synthetic_data
-from pylab import *
+#from pylab import *
 import pickle
 
 from mlp import MLP

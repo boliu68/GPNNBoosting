@@ -11,7 +11,7 @@ from sknn.mlp import Regressor, Layer
 from gpmlp import gp_mlp
 
 import pickle
-from pylab import *
+#from pylab import *
 import synthetic_data
 
 from mlp import MLP
@@ -22,16 +22,26 @@ from sklearn import metrics as sk_metrics
 from sklearn.ensemble import GradientBoostingRegressor as GBR, GradientBoostingClassifier as GBC
 from sklearn.svm import SVR, SVC
 
-from ae_model import ae_lr
+#from ae_model import ae_lr
+
+from mx_GPBoost import mx_gp_mlp
 
 def load_data():
     #X = np.array([[0,1,0], [1,0,1], [0,0,1]])
     #y = [0,1,0]
 
-    #xy = datasets.load_diabetes()
-    #X = xy["data"]
-    # X = np.hstack([X, np.ones((X.shape[0], 1))])
-    #y = xy["target"]
+    # xy = datasets.load_digits()
+    # X = xy["data"]
+    # #X = np.hstack([X, np.ones((X.shape[0], 1))])
+    # y = xy["target"]
+
+    # binary_id = np.logical_or(y == 0, y == 1)
+    # X = X[binary_id, :]
+    # y = y[binary_id]
+
+    # X = X / 255
+
+    # nn = None
 
     # X = pickle.load(open("../16k_fea.pkl"))
     # y = pickle.load(open("../16k_gd.pkl"))[:, 31]
@@ -63,6 +73,7 @@ def load_data():
     y[y==2] = 0
     nn = None
     X = X - np.tile(np.mean(X, 0), (X.shape[0], 1))
+    #X = (X - np.min(X)) / (np.max(X) - np.min(X))
     ####################################
     return X, y, nn
 
@@ -110,25 +121,25 @@ if __name__ == "__main__":
             print "Random Tr %s:%f, Tst %s:%f" % (metrics_style, tr_rd_mse, metrics_style,rd_mse[-1])
 
             ###############################################
-            # #Training Lasso
-            #ls = Lasso(alpha=0.25, normalize=False, fit_intercept=True)
-            ls = LogRCV(penalty="l1", Cs=50, fit_intercept=True, cv=5, n_jobs=-1, refit=True, solver="liblinear", scoring="log_loss")
-            ls.fit(tr_X, tr_y)
+            #Training Lasso
+            # ls = Lasso(alpha=0.25, normalize=False, fit_intercept=True)
+            # ls = LogRCV(penalty="l1", Cs=50, fit_intercept=True, cv=5, n_jobs=-1, refit=True, solver="liblinear", scoring="log_loss")
+            # ls.fit(tr_X, tr_y)
 
-            #print "Lasso Non Zero:%d,%f" % (np.sum(ls.coef_ != 0), np.sum(ls.coef_))
+            # #print "Lasso Non Zero:%d,%f" % (np.sum(ls.coef_ != 0), np.sum(ls.coef_))
 
-            tr_pred = ls.predict_proba(tr_X)[:, 1]
-            tst_pred = ls.predict_proba(tst_X)[:, 1]
+            # tr_pred = ls.predict_proba(tr_X)[:, 1]
+            # tst_pred = ls.predict_proba(tst_X)[:, 1]
 
-            #plot(tst_y, tst_pred, "*")
-            #show()
+            # #plot(tst_y, tst_pred, "*")
+            # #show()
 
-            print "Lasso, NNZ:%d, Lasso TR %s:%f, TST %s:%f" % (
-                np.sum(ls.coef_!=0),
-                metrics_style, metrics(tr_y, tr_pred, metrics_style),
-                metrics_style, metrics(tst_y, tst_pred, metrics_style))
+            # print "Lasso, NNZ:%d, Lasso TR %s:%f, TST %s:%f" % (
+            #     np.sum(ls.coef_!=0),
+            #     metrics_style, metrics(tr_y, tr_pred, metrics_style),
+            #     metrics_style, metrics(tst_y, tst_pred, metrics_style))
 
-            noise_lasso_mse[-1] += metrics(tst_y, tst_pred, metrics_style)
+            # noise_lasso_mse[-1] += metrics(tst_y, tst_pred, metrics_style)
 
 
             ###############################################
@@ -156,6 +167,10 @@ if __name__ == "__main__":
             # svr = SVC(probability=True)
             # svr.fit(tr_X, tr_y)
             # print "SVR Tr %s:%f, Tst %s:%f" % (metrics_style, metrics(tr_y, svr.predict_proba(tr_X)[:, 1], metrics_style), metrics_style, metrics(tst_y, svr.predict_proba(tst_X)[:,1], metrics_style))
+            ###############################################
+            ###########Fit MX GP Boosting #################
+            mx_mlp = mx_gp_mlp(hidden_len=[20, 2], reg=0.1, momentum=0.9, init_param=1, activation_func="RELU", metrics_func=metrics_style)
+            mx_mlp.gp_fit(tr_X,tr_y, gp_lambda=0, lr=0.05, max_iter=2000, debug=False, tst_X=tst_X, tst_y=tst_y)
 
             ###############################################
             #Training Multi Layer Perceptron
@@ -200,9 +215,9 @@ if __name__ == "__main__":
             # gpmlp = gp_mlp(hidden_len=10, reg_v=0.5, reg_w=0.5, momentum=0.9, init_param='optimal', activation_func="RELU", metrics_func=metrics_style)
             # gpmlp.gp_fit(tr_X,tr_y, gp_lambda=0, lr=0.001, max_iter=600, debug=False, tst_X=tst_X, tst_y=tst_y, lasso_model=ls, is_sampling=True, is_valid_dim=False, is_step=False)
 
-            print "=" * 50
-            gpmlp = gp_mlp(hidden_len=10, reg_v=0.5, reg_w=0.5, momentum=0.9, init_param='optimal', activation_func="RELU", metrics_func=metrics_style)
-            gpmlp.gp_fit(tr_X,tr_y, gp_lambda=0, lr=0.001, max_iter=600, debug=False, tst_X=tst_X, tst_y=tst_y, lasso_model=ls, is_sampling=False, is_valid_dim=True, is_step=False)
+            # print "=" * 50
+            # gpmlp = gp_mlp(hidden_len=10, reg_v=0.5, reg_w=0.5, momentum=0.9, init_param='optimal', activation_func="RELU", metrics_func=metrics_style)
+            # gpmlp.gp_fit(tr_X,tr_y, gp_lambda=0, lr=0.001, max_iter=600, debug=False, tst_X=tst_X, tst_y=tst_y, lasso_model=ls, is_sampling=False, is_valid_dim=True, is_step=False)
 
             # print "=" * 50
             # gpmlp = gp_mlp(hidden_len=10, reg_v=0.5, reg_w=0.5, momentum=0.9, init_param='optimal', activation_func="Sigmoid", metrics_func=metrics_style)

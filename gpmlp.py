@@ -8,7 +8,7 @@ from sklearn.metrics import mean_squared_error as mse
 from sklearn.linear_model import Lasso, Ridge, LassoCV, LogisticRegressionCV as LogRCV
 
 import pickle
-from pylab import *
+#from pylab import *
 import synthetic_data
 
 from mlp import MLP

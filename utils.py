@@ -1,6 +1,6 @@
 import numpy as np
 import math
-
+import pickle
 from sklearn import metrics as sk_metrics
 
 def metrics(y, pred, name):
@@ -38,4 +38,15 @@ def metrics(y, pred, name):
         return np.mean(y == pred)
 
     elif name.lower() == "logistic":
+        try:
+            pred[pred == 1] = np.max(pred[pred!=1])
+        except:
+            pass
+        try:
+            pred[pred == 0] = np.min(pred[pred!=0])
+        except:
+            pass
+        #if math.isnan(sk_metrics.log_loss(y, pred)):
+        #    pickle.dump([y, pred], open("debug_yp.pkl", "w"))
+        #    exit()
         return sk_metrics.log_loss(y, pred)

@@ -7,7 +7,7 @@ from sklearn.linear_model import Lasso as LR
 import synthetic_data
 # from sklearn.neural_network import MLPRegressor
 
-from pylab import *
+#from pylab import *
 
 def RELU(x):
 

@@ -3,7 +3,6 @@ import math
 import mxnet as mx
 import numpy as np
 import logging
-import data
 from autoencoder import AutoEncoderModel, model
 from sklearn.linear_model import Lasso, Ridge, LassoCV, LogisticRegressionCV as LogRCV
 
