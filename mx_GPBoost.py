@@ -36,13 +36,17 @@ class mx_gp_mlp:
         X = np.hstack([np.ones((X.shape[0], 1)), X])
         tst_X = np.hstack([np.ones((tst_X.shape[0], 1)), tst_X])
 
+
+	X = X[:, 0:10]
+	tst_X = tst_X[:, 0:10]
+
         #####Make Neural Network
         if self.net == None:
             self.stack_net()
 
         ####Bind the neural network
-        self.net_exec = self.net.simple_bind(ctx=mx.cpu(), data=X.shape, grad_req="write")
-        self.tst_exec = self.net.simple_bind(ctx=mx.cpu(), data=tst_X.shape)
+        self.net_exec = self.net.simple_bind(ctx=mx.gpu(), data=X.shape, grad_req="write")
+        self.tst_exec = self.net.simple_bind(ctx=mx.gpu(), data=tst_X.shape)
 
         ####Assign the names and arrays to correspondent variable
         net_name = self.net_exec.arg_dict
@@ -74,23 +78,42 @@ class mx_gp_mlp:
         self.init_lr = lr
         self.gp_lambda = gp_lambda
 
-        self.input_lr = np.zeros(self.net_exec.arg_arrays[self.input_idx].shape)
-        self.input_lr[:, 0] = self.init_lr
-
         #####Initialization
-        for i in range(len(self.param_arrays)):
-            if "bias" not in arg_names[self.param_idx[i]]:
-                if self.param_idx[i] == self.input_idx:
-                        tmp_param = np.random.uniform(low=-self.init_param, high=self.init_param, size=self.param_arrays[i].shape)
-                        tmp_param[:, self.inactive_d] = 0
-                        self.param_arrays[i][:] = tmp_param
-                else:
-                    self.param_arrays[i][:] = np.random.uniform(low=-self.init_param, high=self.init_param, size=self.param_arrays[i].shape)
-            else:
-                #Inialize Zero for Bias
-                self.param_arrays[i][:] = np.zeros(self.param_arrays[i].shape)
+	initializer = mx.initializer.Xavier(factor_type="out", magnitude=2.34)
+	initializer_input = mx.initializer.Xavier(factor_type="out", magnitude=2.34)
+	for i in range(len(self.param_arrays)):
+	    if self.param_idx[i] == self.input_idx:
+		empty_nd = mx.nd.empty((self.param_arrays[i].shape[0], 1), mx.cpu(1))
+		initializer_input(arg_names[self.param_idx[i]], empty_nd)
+		tmp_param = np.zeros(self.param_arrays[i].shape)
+		tmp_param[:, 0] = empty_nd.asnumpy().flatten()
+		#empty_nd.copyto(self.param_arrays[i])
+		
+		#initializer_input(arg_names[self.param_idx[i]], self.param_arrays[i])
+		#tmp_param[:, self.inactive_d] = 0
+		
+		
+		self.param_arrays[i][:] = tmp_param
+		
+	    else:
+		initializer(arg_names[self.param_idx[i]], self.param_arrays[i])
+      
+	#pickle.dump([self.net_exec.arg_dict], open("init_param1.pkl", "w"))
 
-        while(True):
+#	init_param1 = pickle.load(open("init_param1.pkl"))[0]
+#	init_param = pickle.load(open("init_param.pkl"))[0]
+#	for i in range(len(self.param_arrays)):
+#	    if self.param_idx[i] == self.input_idx:
+#		tmp_param = np.zeros(self.param_arrays[i].shape)
+#		#tmp_param[:,0] = init_param1[arg_names[self.param_idx[i]]].asnumpy().flatten()
+#		tmp_param[:,0] = init_param[arg_names[self.param_idx[i]]].asnumpy()[:, 0].flatten()
+#		#tmp_param[:, self.inactive_d] = 0
+#		self.param_arrays[i][:] = tmp_param
+#	    else:
+#		#self.param_arrays[i][:] = init_param[arg_names[self.param_idx[i]]]
+#		init_param[arg_names[self.param_idx[i]]].copyto(self.param_arrays[i])		
+
+	while(True):
 
             self.data_arrays[:] = X
             self.label_arrays[:] = y
@@ -101,8 +124,11 @@ class mx_gp_mlp:
 
             lr = self.init_lr
 
-            for it in range(max_iter):
+	    while (True):
+            #for it in range(max_iter):
                 self.net_exec.forward(is_train=True)
+
+		#print "Forward Active Sum:%f, Inactive Sum:%f" % (np.sum(np.abs(self.input_param.asnumpy()[:, self.active_d])), np.sum(np.abs(self.input_param.asnumpy()[:, self.inactive_d])))
 
                 #Loss Calculated
                 one_loss = metrics(y, self.net_exec.outputs[0].asnumpy()[:,1].flatten(), "logistic")
@@ -110,23 +136,59 @@ class mx_gp_mlp:
                 for i in range(len(self.param_arrays)):
                     one_loss += self.reg * (np.linalg.norm(self.param_arrays[i].asnumpy()) ** 2)
                 it_loss_l2.append(one_loss)
-                #print "Log Loss:%f" % it_loss_l2[-1]
+                print "Log Loss:%f" % it_loss_l2[-1]
 
-                #Update Training
+		grad_tmp = self.input_grad.asnumpy()
+		#print "Inactive Grad Max:%f, Active Grad Max:%f" % (
+		#		np.max(np.abs(grad_tmp)),
+		#		np.max(np.abs(grad_tmp)), 0)
+				#np.mean(np.abs(tmp_param)))
+		#		np.max(np.abs(grad_tmp[:, self.inactive_d])),
+		#		np.max(np.abs(grad_tmp[:, self.active_d])))
+		#		#np.mean(np.abs(tmp_param[:, self.active_d])))
+		#print "=" * 50
+
+		hd = np.dot(X, self.input_param.asnumpy().T) + self.net_exec.arg_dict["fc1_bias"].asnumpy()
+		#hd[hd < 0] = 0
+		#print "Hidden Unit %d, SP:%f, Mean:%f" % (1, np.mean(hd == 0),
+		#	    np.mean(hd[hd != 0]))
+		#print hd
+		#print "Hidden Unit 1, SP:%f" % (np.mean(hd == 0))
+		#for j in range(2, 7):
+		#    hd = np.dot(hd, self.net_exec.arg_dict["fc%d_weight" % j].asnumpy().T) + self.net_exec.arg_dict["fc%d_bias" % j].asnumpy()
+		#    hd[hd < 0] = 0
+		#    print "=" * 50
+		#    print "Hidden Unit %d, SP:%f, Mean:%f" % (j, np.mean(hd == 0),
+		#		    np.mean(hd[hd != 0]))
+		    #print hd
+		#print "=" * 50
+		#exit()
+		
+		#Update Training
                 self.net_exec.backward()
-                for i in range(len(self.param_arrays)):
-                    if self.param_idx[i] == self.input_idx:
-                        tmp_param = self.param_arrays[i].asnumpy()
+                
+		for i in range(len(self.param_arrays)):
+		    if self.param_idx[i] == self.input_idx:
+			
+			tmp_param = self.param_arrays[i].asnumpy()
                         self.grad_arrays[i].wait_to_read()
                         grad_tmp  = self.grad_arrays[i].asnumpy()
-
+			#grad_tmp[:, self.inactive_d] = 0
                         #Check Gradient NaN
                         if np.sum(np.isnan(grad_tmp)) > 0:
                             print "Found NaN"
                             exit()
 
+			if np.max(np.abs(grad_tmp)) == 0:
+
+			    for j in range(len(self.param_arrays)):
+				print "=" * 50
+				print arg_names[self.param_idx[j]]
+				print self.param_arrays[j].asnumpy()
+			    exit()
+
                         tmp_param += - lr * ( grad_tmp * self.grad_rescaling + self.reg * tmp_param)
-                        tmp_param[:, self.inactive_d] = 0
+			tmp_param[:, self.inactive_d] = 0
                         self.param_arrays[i][:] = tmp_param
                     else:
                         self.param_arrays[i][:] += - lr * (self.grad_arrays[i] * self.grad_rescaling + self.reg * self.param_arrays[i])
@@ -138,9 +200,9 @@ class mx_gp_mlp:
                 # except:
                 #     pass
 
-                if len(it_loss_l2) > 10:
-                    if ((it_loss_l2[-10] - it_loss_l2[-1]) / it_loss_l2[-10] ) < 1e-6:
-                        break
+                #if len(it_loss_l2) > 10:
+                #    if ((it_loss_l2[-10] - it_loss_l2[-1]) / it_loss_l2[-10] ) < 1e-6:
+                #        break
 
             # if True:
             #     plt.close()
@@ -166,7 +228,7 @@ class mx_gp_mlp:
                 self.metrics_func, metrics(y, tr_pred, self.metrics_func),
                 self.metrics_func, metrics(tst_y, tst_pred, self.metrics_func))
 
-            self.gp_add_feature()
+	    self.gp_add_feature(X, y)
 
     def stack_net(self):
 
@@ -184,7 +246,7 @@ class mx_gp_mlp:
         net = mx.symbol.SoftmaxOutput(data=net, name="softmax")
         self.net = net
 
-    def gp_add_feature(self):
+    def gp_add_feature(self, X, y):
 
         np_input_grad = self.input_grad.asnumpy()
         inactive_norm_grad = np.linalg.norm(np_input_grad, axis=0, ord=self.norm_style)[self.inactive_d]
@@ -193,19 +255,19 @@ class mx_gp_mlp:
         #print "Max Gradient:%f" %  inactive_norm_grad[inactive_id]
 
         if inactive_norm_grad[inactive_id] * self.init_lr <= self.gp_lambda:
-             #End Training
-             print "Normal Error"
-             print inactive_norm_grad[inactive_id]
-             exit()
-             return False
+	    #End Training
+            print "Normal Error"
+	    exit()
+            return False
 
+	#print "Mean Hidden Unit:%f, Mean Grad:%f" % (np.mean(np.abs(self.hd)), np.mean(np.abs(np_input_grad)))
         #Add Feature
         self.active_d.append(self.inactive_d[inactive_id])
         self.inactive_d.pop(inactive_id)
-        self.input_lr[:, self.inactive_d[inactive_id]] = self.init_lr
+        #self.input_lr[:, self.inactive_d[inactive_id]] = self.init_lr
 
         tmp_param = self.input_param.asnumpy()
-        tmp_param[:, self.active_d[-1]] = np.random.uniform(low=-self.init_param, high=self.init_param, size=tmp_param.shape[0])
+	tmp_param[:, self.active_d[-1]] = self.save_init[:, self.active_d[-1]]
         self.input_param[:] = tmp_param
 
         return True
