@@ -50,6 +50,8 @@ def parallel_gpboost(p):
         mx_mlp = mx_gp_mlp(hidden_len=dpt_list, reg=reg, momentum=0.9, init_param=1, activation_func="RELU", metrics_func=metrics_style)
         mx_mlp.gp_fit(tr_X,tr_y, gp_lambda=0, max_features=30, lr=0.05, max_iter=1000, debug=False, tst_X=tst_X, tst_y=tst_y, cpu_id=cpu_id)
 
+    print "CV ID:%d, CPU ID:%d, Mode:%s" % (cv_id, cpu_id, mode)
+
     return dict(param=p,
         cv_id=cv_id,
         max_grad=mx_mlp.max_grad_list,

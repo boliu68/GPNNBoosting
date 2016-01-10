@@ -189,11 +189,11 @@ class mx_gp_mlp:
             self.tst_exec.forward(is_train=False)
             tst_pred = self.tst_exec.outputs[0].asnumpy()[:,1].flatten()
 
-            print "Iter:%d, Tr %s:%f, Tst %s:%f, Tr %s:%f, Tst %s:%f," % (len(self.active_d),
-                "Log Loss", metrics(y, tr_pred, "logistic"),
-                "Log Loss", metrics(tst_y, tst_pred, "logistic"),
-                self.metrics_func, metrics(y, tr_pred, self.metrics_func),
-                self.metrics_func, metrics(tst_y, tst_pred, self.metrics_func))
+            # print "Iter:%d, Tr %s:%f, Tst %s:%f, Tr %s:%f, Tst %s:%f," % (len(self.active_d),
+            #     "Log Loss", metrics(y, tr_pred, "logistic"),
+            #     "Log Loss", metrics(tst_y, tst_pred, "logistic"),
+            #     self.metrics_func, metrics(y, tr_pred, self.metrics_func),
+            #     self.metrics_func, metrics(tst_y, tst_pred, self.metrics_func))
 
             max_grad = self.gp_add_feature()
 
