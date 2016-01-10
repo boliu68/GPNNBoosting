@@ -125,23 +125,23 @@ if __name__ == "__main__":
             ###############################################
             #Training Lasso
 #            ls = Lasso(alpha=0.25, normalize=False, fit_intercept=True)
-#            ls = LogRCV(penalty="l1", Cs=50, fit_intercept=True, cv=5, n_jobs=-1, refit=True, solver="liblinear", scoring="log_loss")
-#            ls.fit(tr_X, tr_y)
-#
-#            #print "Lasso Non Zero:%d,%f" % (np.sum(ls.coef_ != 0), np.sum(ls.coef_))
-#
-#            tr_pred = ls.predict_proba(tr_X)[:, 1]
-#            tst_pred = ls.predict_proba(tst_X)[:, 1]
-#
-#            #plot(tst_y, tst_pred, "*")
-#            #show()
-#
-#            print "Lasso, NNZ:%d, Lasso TR %s:%f, TST %s:%f" % (
-#                np.sum(ls.coef_!=0),
-#                metrics_style, metrics(tr_y, tr_pred, metrics_style),
-#                metrics_style, metrics(tst_y, tst_pred, metrics_style))
-#
-#            noise_lasso_mse[-1] += metrics(tst_y, tst_pred, metrics_style)
+            ls = LogRCV(penalty="l1", Cs=50, fit_intercept=True, cv=5, n_jobs=-1, refit=True, solver="liblinear", scoring="log_loss")
+            ls.fit(tr_X, tr_y)
+
+            #print "Lasso Non Zero:%d,%f" % (np.sum(ls.coef_ != 0), np.sum(ls.coef_))
+
+            tr_pred = ls.predict_proba(tr_X)[:, 1]
+            tst_pred = ls.predict_proba(tst_X)[:, 1]
+
+            #plot(tst_y, tst_pred, "*")
+            #show()
+
+            print "Lasso, NNZ:%d, Lasso TR %s:%f, TST %s:%f" % (
+                np.sum(ls.coef_!=0),
+                metrics_style, metrics(tr_y, tr_pred, metrics_style),
+                metrics_style, metrics(tst_y, tst_pred, metrics_style))
+
+            noise_lasso_mse[-1] += metrics(tst_y, tst_pred, metrics_style)
 
 
             ###############################################
@@ -171,8 +171,8 @@ if __name__ == "__main__":
             # print "SVR Tr %s:%f, Tst %s:%f" % (metrics_style, metrics(tr_y, svr.predict_proba(tr_X)[:, 1], metrics_style), metrics_style, metrics(tst_y, svr.predict_proba(tst_X)[:,1], metrics_style))
             ###############################################
             ###########Fit MX GP Boosting #################
-            mx_mlp = mx_gp_mlp(hidden_len=[20,10,10,10, 5, 2], reg=0, momentum=0.9, init_param=1, activation_func="RELU", metrics_func=metrics_style)
-            mx_mlp.gp_fit(X,y, gp_lambda=0, lr=0.05, max_iter=2000, debug=False, tst_X=tst_X, tst_y=tst_y)
+            mx_mlp = mx_gp_mlp(hidden_len=[20, 2], reg=0, momentum=0.9, init_param=1, activation_func="RELU", metrics_func=metrics_style)
+            mx_mlp.gp_fit(tr_X,tr_y, gp_lambda=0, lr=0.05, max_iter=1000, debug=False, tst_X=tst_X, tst_y=tst_y)
 
             ###############################################
             #Training Multi Layer Perceptron
