@@ -173,8 +173,8 @@ if __name__ == "__main__":
             # print "SVR Tr %s:%f, Tst %s:%f" % (metrics_style, metrics(tr_y, svr.predict_proba(tr_X)[:, 1], metrics_style), metrics_style, metrics(tst_y, svr.predict_proba(tst_X)[:,1], metrics_style))
             ###############################################
             ###########Fit MX GP Boosting #################
-            mx_mlp = mx_gp_mlp(hidden_len=[20, 2], reg=0.05, momentum=0.9, init_param=1, activation_func="RELU", metrics_func=metrics_style)
-            mx_mlp.gp_fit(tr_X,tr_y, gp_lambda=0, max_features=np.sum(ls.coef_[0]!=0), lr=0.05, max_iter=1000, debug=False, tst_X=tst_X, tst_y=tst_y)
+            mx_mlp = mx_gp_mlp(hidden_len=[20, 2], reg=0.01, momentum=0.9, init_param=1, activation_func="RELU", metrics_func=metrics_style)
+            mx_mlp.gp_fit(tr_X,tr_y, gp_lambda=0, max_features=30, lr=0.05, max_iter=1000, debug=False, tst_X=tst_X, tst_y=tst_y)
 
             print "#" * 50
             print "Lasso Select Features:"

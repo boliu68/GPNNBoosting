@@ -28,7 +28,7 @@ class mx_gp_mlp:
 
         self.net = None
 
-    def gp_fit(self, X, y, gp_lambda=0.1, max_features=-1, max_iter=50, lr=0.01, debug=False, tst_X=None, tst_y=None, lasso_model=None):
+    def gp_fit(self, X, y, gp_lambda=0.1, max_features=-1, max_iter=50, lr=0.01, debug=False, tst_X=None, tst_y=None, lasso_model=None, cpu_id=0):
 
         assert X.shape[0] == len(y)
 
@@ -37,8 +37,8 @@ class mx_gp_mlp:
         # self.tst_ls_X = tst_X[:, lasso_model.coef_[0]!=0]
         # self.tst_ls_X = np.hstack([np.ones((self.tst_ls_X.shape[0], 1)), self.tst_ls_X])
 
-        X = np.hstack([np.ones((X.shape[0], 1)), X])
-        tst_X = np.hstack([np.ones((tst_X.shape[0], 1)), tst_X])
+        X = np.hstack([np.ones((X.shape[cpu_id], 1)), X])
+        tst_X = np.hstack([np.ones((tst_X.shape[cpu_id], 1)), tst_X])
 
         #self.ls_X = np.zeros(X.shape)
         #self.tst_ls_X = np.zeros(tst_X.shape)
@@ -49,8 +49,8 @@ class mx_gp_mlp:
             self.stack_net()
 
         ####Bind the neural network
-        self.net_exec = self.net.simple_bind(ctx=mx.cpu(), data=X.shape, grad_req="write")
-        self.tst_exec = self.net.simple_bind(ctx=mx.cpu(), data=tst_X.shape)
+        self.net_exec = self.net.simple_bind(ctx=mx.cpu(0), data=X.shape, grad_req="write")
+        self.tst_exec = self.net.simple_bind(ctx=mx.cpu(0), data=tst_X.shape)
 
         ####Assign the names and arrays to correspondent variable
         net_name = self.net_exec.arg_dict
@@ -99,6 +99,12 @@ class mx_gp_mlp:
                 initializer(arg_names[self.param_idx[i]], self.param_arrays[i])
 
         #while(True):
+        self.max_grad_list = []
+        self.tr_loss_list = []
+        self.tst_loss_list = []
+        self.tr_metr_list = []
+        self.tst_metr_list = []
+
         while (max_features == -1) or (len(self.active_d) <= max_features):
 
             #X_tr, X_vd, y_tr, y_vd = train_test_split(X, y, test_size=0.75)
@@ -138,7 +144,12 @@ class mx_gp_mlp:
                         #Check Gradient NaN
                         if np.sum(np.isnan(grad_tmp)) > 0:
                             print "Found NaN"
-                            exit()
+                            self.max_grad_list.append(-1)
+                            self.tr_loss_list.append(-1)
+                            self.tst_loss_list.append(-1)
+                            self.tr_metr_list.append(-1)
+                            self.tst_metr_list.append(-1)
+                            return
 
                         tmp_param += - lr * ( grad_tmp * self.grad_rescaling + self.reg * tmp_param)
                         tmp_param[:, self.inactive_d] = 0
@@ -156,7 +167,7 @@ class mx_gp_mlp:
                 if len(it_loss_l2) > 10:
                     if ((it_loss_l2[-10] - it_loss_l2[-1]) / it_loss_l2[-10] ) < 1e-6:
                         break
-            if True:
+            if False:
                 plt.close()
                 plt.figure()
                 plt.title("Current Active Features:%d" % (len(self.active_d)))
@@ -184,7 +195,14 @@ class mx_gp_mlp:
                 self.metrics_func, metrics(y, tr_pred, self.metrics_func),
                 self.metrics_func, metrics(tst_y, tst_pred, self.metrics_func))
 
-            self.gp_add_feature()
+            max_grad = self.gp_add_feature()
+
+            #Logging the training information
+            self.max_grad_list.append(max_grad)
+            self.tr_loss_list.append(metrics(y, tr_pred, "logistic"))
+            self.tst_loss_list.append(metrics(tst_y, tst_pred, "logistic"))
+            self.tr_metr_list.append(metrics(y, tr_pred, self.metrics_func))
+            self.tst_metr_list.append(metrics(tst_y, tst_pred, self.metrics_func))
 
     def stack_net(self):
 
@@ -212,15 +230,15 @@ class mx_gp_mlp:
         inactive_norm_grad = np.linalg.norm(np_input_grad, axis=0, ord=self.norm_style)[self.inactive_d]
         inactive_id = np.argmax(inactive_norm_grad)
 
-        print "Max Gradient:%f" %  (inactive_norm_grad[inactive_id] * self.grad_rescaling * self.init_lr)
+        #print "Max Gradient:%f" %  (inactive_norm_grad[inactive_id] * self.grad_rescaling * self.init_lr)
 
         if inactive_norm_grad[inactive_id] * self.init_lr <= self.gp_lambda:
             #End Training
-            print "Normal Error"
-            exit()
-            return False
+            #print "Normal Error"
+            #exit()
+            return -1
 
-    #print "Mean Hidden Unit:%f, Mean Grad:%f" % (np.mean(np.abs(self.hd)), np.mean(np.abs(np_input_grad)))
+        #print "Mean Hidden Unit:%f, Mean Grad:%f" % (np.mean(np.abs(self.hd)), np.mean(np.abs(np_input_grad)))
         #Add Feature
         self.active_d.append(self.inactive_d[inactive_id])
         self.inactive_d.pop(inactive_id)
@@ -234,7 +252,7 @@ class mx_gp_mlp:
 
         self.input_param[:] = tmp_param
 
-        return True
+        return inactive_norm_grad[inactive_id] * self.grad_rescaling * self.init_lr
 
 
     def gp_predict(self, X):
