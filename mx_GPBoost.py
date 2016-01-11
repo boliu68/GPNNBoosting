@@ -37,9 +37,9 @@ class mx_gp_mlp:
         # self.tst_ls_X = tst_X[:, lasso_model.coef_[0]!=0]
         # self.tst_ls_X = np.hstack([np.ones((self.tst_ls_X.shape[0], 1)), self.tst_ls_X])
 
-        X = np.hstack([np.ones((X.shape[cpu_id], 1)), X])
-        tst_X = np.hstack([np.ones((tst_X.shape[cpu_id], 1)), tst_X])
-
+        X = np.hstack([np.ones((X.shape[0], 1)), X])
+        tst_X = np.hstack([np.ones((tst_X.shape[0], 1)), tst_X])
+	self.cpu_id = cpu_id
         #self.ls_X = np.zeros(X.shape)
         #self.tst_ls_X = np.zeros(tst_X.shape)
 
@@ -49,8 +49,8 @@ class mx_gp_mlp:
             self.stack_net()
 
         ####Bind the neural network
-        self.net_exec = self.net.simple_bind(ctx=mx.cpu(0), data=X.shape, grad_req="write")
-        self.tst_exec = self.net.simple_bind(ctx=mx.cpu(0), data=tst_X.shape)
+        self.net_exec = self.net.simple_bind(ctx=mx.cpu(cpu_id), data=X.shape, grad_req="write")
+        self.tst_exec = self.net.simple_bind(ctx=mx.cpu(cpu_id), data=tst_X.shape)
 
         ####Assign the names and arrays to correspondent variable
         net_name = self.net_exec.arg_dict
@@ -90,7 +90,7 @@ class mx_gp_mlp:
         initializer = mx.initializer.Xavier(factor_type="out", magnitude=2.34)
         for i in range(len(self.param_arrays)):
             if self.param_idx[i] == self.input_idx:
-                empty_nd = mx.nd.zeros((self.param_arrays[i].shape[0], 1), mx.cpu())
+                empty_nd = mx.nd.zeros((self.param_arrays[i].shape[0], 1), mx.cpu(cpu_id))
                 initializer(arg_names[self.param_idx[i]], empty_nd)
                 tmp_param0 = np.zeros(self.param_arrays[i].shape)
                 tmp_param0[:, 0] = empty_nd.asnumpy().flatten()
@@ -189,7 +189,7 @@ class mx_gp_mlp:
             self.tst_exec.forward(is_train=False)
             tst_pred = self.tst_exec.outputs[0].asnumpy()[:,1].flatten()
 
-            # print "Iter:%d, Tr %s:%f, Tst %s:%f, Tr %s:%f, Tst %s:%f," % (len(self.active_d),
+            #print "Iter:%d, Tr %s:%f, Tst %s:%f, Tr %s:%f, Tst %s:%f," % (len(self.active_d),
             #     "Log Loss", metrics(y, tr_pred, "logistic"),
             #     "Log Loss", metrics(tst_y, tst_pred, "logistic"),
             #     self.metrics_func, metrics(y, tr_pred, self.metrics_func),
@@ -245,7 +245,7 @@ class mx_gp_mlp:
         #self.input_lr[:, self.inactive_d[inactive_id]] = self.init_lr
 
         tmp_param = self.input_param.asnumpy()
-        empty_param = mx.nd.empty((tmp_param.shape[0], 1), mx.cpu())
+        empty_param = mx.nd.empty((tmp_param.shape[0], 1), mx.cpu(self.cpu_id))
         initializer = mx.initializer.Xavier(factor_type="out", magnitude=2.34)
         initializer("fc1_weight", empty_param)
         tmp_param[:, self.active_d[-1]] = empty_param.asnumpy().flatten()
