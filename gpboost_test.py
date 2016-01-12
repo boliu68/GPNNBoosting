@@ -78,8 +78,8 @@ if __name__ == "__main__":
     gX, gy = load_data()
     metrics_style = "auc"
 
-    cpu_id = int(sys.argv[1])
-    print "CPU ID:%d" % cpu_id
+    #cpu_id = int(sys.argv[1])
+    #print "CPU ID:%d" % cpu_id
 
     ########Begin 5 Fold Cross Validation
 
@@ -93,10 +93,10 @@ if __name__ == "__main__":
 
     kf = KFold(gX.shape[0], n_folds=5, shuffle=True)
 
-    tr, tst = pickle.load(open("tr_tst.pkl"))[cpu_id]
-    cv_id= cpu_id+ 1
-    #for tr, tst in kf:
-    if True:
+    tr_tst = pickle.load(open("tr_tst.pkl"))
+    cv_id= 1
+
+    for tr, tst in tr_tst:
 
         #Split Training and Test
         tr_X = gX[tr, :]
@@ -107,47 +107,49 @@ if __name__ == "__main__":
 
         ###############################################
         #Training Lasso
-        #ls = LogRCV(penalty="l1", Cs=50, fit_intercept=True, cv=5, n_jobs=-1, refit=True, solver="liblinear", scoring="log_loss")
-        #ls.fit(tr_X, tr_y)
-        #tr_pred = ls.predict_proba(tr_X)[:, 1]
-        #tst_pred = ls.predict_proba(tst_X)[:, 1]
+        ls = LogRCV(penalty="l1", Cs=50, fit_intercept=True, cv=5, n_jobs=-1, refit=True, solver="liblinear", scoring="log_loss")
+        ls.fit(tr_X, tr_y)
+        tr_pred = ls.predict_proba(tr_X)[:, 1]
+        tst_pred = ls.predict_proba(tst_X)[:, 1]
 
-        #print "Lasso CPU ID:%d, CV:%d, Lasso, NNZ:%d, Tr Log Loss:%f, Tst Log Loss:%f, Lasso TR %s:%f, TST %s:%f" % (
-        #    cpu_id, cv_id,
-        #    np.sum(ls.coef_!=0),
-        #    metrics(tr_y, tr_pred, "logistic"),
-        #    metrics(tst_y, tst_pred, "logistic"),
-        #    metrics_style, metrics(tr_y, tr_pred, metrics_style),
-        #    metrics_style, metrics(tst_y, tst_pred, metrics_style))
-        #lasso_result = dict(cv_id=cv_id,
-        #    nnz=np.sum(ls.coef_!=0),
-        #    tr_log=metrics(tr_y, tr_pred, "logistic"),
-        #    tst_log=metrics(tst_y, tst_pred, "logistic"),
-        #    tr_metr=metrics(tr_y, tr_pred, metrics_style),
-        #    tst_metr=metrics(tst_y, tst_pred, metrics_style))
+        print "Lasso CV:%d, Lasso, NNZ:%d, Tr Log Loss:%f, Tst Log Loss:%f, Lasso TR %s:%f, TST %s:%f" % (
+           cv_id,
+           np.sum(ls.coef_!=0),
+           metrics(tr_y, tr_pred, "logistic"),
+           metrics(tst_y, tst_pred, "logistic"),
+           metrics_style, metrics(tr_y, tr_pred, metrics_style),
+           metrics_style, metrics(tst_y, tst_pred, metrics_style))
+        lasso_result = dict(cv_id=cv_id,
+           nnz=np.sum(ls.coef_!=0),
+           tr_log=metrics(tr_y, tr_pred, "logistic"),
+           tst_log=metrics(tst_y, tst_pred, "logistic"),
+           tr_metr=metrics(tr_y, tr_pred, metrics_style),
+           tst_metr=metrics(tst_y, tst_pred, metrics_style))
+
+        cv_id += 1
 
         #lasso_result_list.append(lasso_result)
 
-	global out 
-	out = open("Log_%d" % cpu_id, "w")
+	# global out
+	# out = open("Log_%d" % cpu_id, "w")
 
-        ######Save GP Boost Parameter
-        for hdl in hidden_lens:
-            for rg in reg:
-                gpboost_param_list += [dict(tr=tr.copy(), tst=tst.copy(), hdl=hdl, reg=rg, depth=-1, cv_id=cv_id, mode="hdl", cpu_id=cpu_id)]
+ #        ######Save GP Boost Parameter
+ #        for hdl in hidden_lens:
+ #            for rg in reg:
+ #                gpboost_param_list += [dict(tr=tr.copy(), tst=tst.copy(), hdl=hdl, reg=rg, depth=-1, cv_id=cv_id, mode="hdl", cpu_id=cpu_id)]
 
-        for dpt in depth:
-            for rg in reg:
-                gpboost_param_list += [dict(tr=tr.copy(), tst=tst.copy(), hdl=-1, reg=rg, depth=dpt, cv_id=cv_id, mode="dpt_i", cpu_id=cpu_id)]
+ #        for dpt in depth:
+ #            for rg in reg:
+ #                gpboost_param_list += [dict(tr=tr.copy(), tst=tst.copy(), hdl=-1, reg=rg, depth=dpt, cv_id=cv_id, mode="dpt_i", cpu_id=cpu_id)]
 
-        for dpt in depth:
-            for rg in reg:
-                gpboost_param_list += [dict(tr=tr.copy(), tst=tst.copy(), hdl=-1, reg=rg, depth=dpt, cv_id=cv_id, mode="dpt_d", cpu_id=cpu_id)]
+ #        for dpt in depth:
+ #            for rg in reg:
+ #                gpboost_param_list += [dict(tr=tr.copy(), tst=tst.copy(), hdl=-1, reg=rg, depth=dpt, cv_id=cv_id, mode="dpt_d", cpu_id=cpu_id)]
 
-    res = []
-    #out.write("Total Combination:%d\n" % len(gpboost_param_list))
-    for p in gpboost_param_list:
-        out.write("Process %d / %d\n" % (len(res), len(gpboost_param_list)))
-	out.flush()
-	res.append(parallel_gpboost(p))
-	pickle.dump(res, open("cpu%d.pkl" % cpu_id, "w"))
+ #    res = []
+ #    #out.write("Total Combination:%d\n" % len(gpboost_param_list))
+ #    for p in gpboost_param_list:
+ #        out.write("Process %d / %d\n" % (len(res), len(gpboost_param_list)))
+	# out.flush()
+	# res.append(parallel_gpboost(p))
+	# pickle.dump(res, open("cpu%d.pkl" % cpu_id, "w"))

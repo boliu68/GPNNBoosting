@@ -173,19 +173,25 @@ if __name__ == "__main__":
             # print "SVR Tr %s:%f, Tst %s:%f" % (metrics_style, metrics(tr_y, svr.predict_proba(tr_X)[:, 1], metrics_style), metrics_style, metrics(tst_y, svr.predict_proba(tst_X)[:,1], metrics_style))
             ###############################################
             ###########Fit MX GP Boosting #################
-            mx_mlp = mx_gp_mlp(hidden_len=[20, 2], reg=0.01, momentum=0.9, init_param=1, activation_func="RELU", metrics_func=metrics_style)
-            mx_mlp.gp_fit(tr_X,tr_y, gp_lambda=0, max_features=30, lr=0.05, max_iter=1000, debug=False, tst_X=tst_X, tst_y=tst_y)
+            mx_mlp = mx_gp_mlp(hidden_len=[30, 15, 2], reg=0.01, momentum=0.9, init_param=1, activation_func="RELU", metrics_func=metrics_style)
+            mx_mlp.gp_fit(tr_X,tr_y, gp_lambda=0, max_features=50, lr=0.05, max_iter=100, debug=False, tst_X=tst_X, tst_y=tst_y)
+            print "GPBoost Tr Loss:%f, Tst Loss:%f, Tr AUC:%f, Tst AUC:%f" % (
+                mx_mlp.tr_loss_list[-1],
+                mx_mlp.tst_loss_list[-1],
+                mx_mlp.tr_metr_list[-1],
+                mx_mlp.tst_metr_list[-1]
+                )
 
-            print "#" * 50
-            print "Lasso Select Features:"
-            ls_select = np.arange(X.shape[1])[ls.coef_[0] != 0]
-            print ls_select
-            print "Boost Select Features:"
-            print mx_mlp.active_d
-            input_param = mx_mlp.input_param.asnumpy()[:, mx_mlp.active_d]
-            print np.linalg.norm(input_param, axis=0)
-            print "Overlap of two methods:%f" % (len(set(ls_select) & set(mx_mlp.active_d)) * 1.0 / len(ls_select))
-            print "#" * 50
+            # print "#" * 50
+            # print "Lasso Select Features:"
+            # ls_select = np.arange(X.shape[1])[ls.coef_[0] != 0]
+            # print ls_select
+            # print "Boost Select Features:"
+            # print mx_mlp.active_d
+            # input_param = mx_mlp.input_param.asnumpy()[:, mx_mlp.active_d]
+            # print np.linalg.norm(input_param, axis=0)
+            # print "Overlap of two methods:%f" % (len(set(ls_select) & set(mx_mlp.active_d)) * 1.0 / len(ls_select))
+            # print "#" * 50
 
             ###############################################
             #Training Multi Layer Perceptron
@@ -250,7 +256,6 @@ if __name__ == "__main__":
             # gpmlp = gp_mlp(hidden_len=10, reg_v=0.5, reg_w=0.5, momentum=0.9, init_param='optimal', activation_func="RELU", metrics_func=metrics_style)
             # gpmlp.gp_fit(tr_X,tr_y, gp_lambda=0, lr=0.001, max_iter=600, debug=False, tst_X=tst_X, tst_y=tst_y, lasso_model=ls, is_sampling=True, is_valid_dim=True, is_step=True)
 
-            exit()
             #tr_pred = gpmlp.gp_predict(tr_X)
             #tst_pred = gpmlp.gp_predict(tst_X)
 
